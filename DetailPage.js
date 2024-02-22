@@ -1,42 +1,18 @@
-import React from 'react';
-import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
-import {useState} from 'react';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TextInput, Button } from 'react-native';
 
-const DetailPage = ({ navigation, route, saveList, setList, list = [], data}) => {
-    const [editedMessage, setEditedMessage] = useState(route.params?.message);
-
- /*  const message = route.params?.message ?? 'No message';
-  const [text, setText] = useState(message);
- */
- /*  function onSavePressed(){
-    navigation.navigate('Home', {key: text.length, value: text.value});
-  } */
-    
-
-
-  function onSavePressed(){
-    navigation.navigate('Home', {key: route.params.item.id, value: editedMessage});
-  }
-
-
+const DetailPage = ({ navigation, route, onSave }) => {
+  const [editedMessage, setEditedMessage] = useState(route.params?.note.text);
 
   const handleSaveNote = () => {
-    const updatedList = (list).map(note => {
-        if (note.value === route.params?.message) {
-          return { ...note, value: editedMessage };
-        }
-        return note;
-      });
-      setList(updatedList);
-      saveList();
-      navigation.goBack();
-      //navigation.navigate('Home', {key: route.params.item.id, value: editedMessage})
-    };
+    onSave(editedMessage);
+    navigation.goBack();
+  };
 
   return (
     <View style={styles.container}>
       <TextInput
-        style={styles.title}
+        style={styles.input}
         value={editedMessage}
         onChangeText={setEditedMessage}
       />
@@ -51,15 +27,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
   },
-  title: {
-    marginTop: 20,
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    borderColor: 'black',
+  input: {
     borderWidth: 1,
+    borderColor: 'black',
+    padding: 8,
+    margin: 10,
+    width: 200,
   },
 });
 

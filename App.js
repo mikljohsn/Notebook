@@ -1,114 +1,97 @@
-import { StatusBar } from "expo-status-bar";
-import { useState, useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  TextInput,
-  FlatList,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { NavigationContainer } from "@react-navigation/native";
-import { TouchableOpacity } from "react-native";
-import DetailPage from "./DetailPage.js";
-import {app, database} from './firebase.js';
-import { collection, addDoc } from "firebase/firestore";
-import { useCollection} from 'react-firebase-hooks/firestore';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, Button, FlatList, TouchableOpacity } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NavigationContainer } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import DetailPage from './DetailPage';
+import { app, database } from './firebase.js';
+import { collection, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { useCollection } from "react-firebase-hooks/firestore";
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [text, setText] = useState("");
-  const [list, setList] = useState([]);
-  const [values, loading, error] = useCollection(collection(database, "notes")); 
-  const data = values?.docs.map((doc) => ({ ...doc.data(), id: doc.id })); //uses optional chaining to check if values is not null or undefined and spreadspreads the data into a new array (...)
-  const Stack = createNativeStackNavigator();
+  const [notes, setNotes] = useState([]);
+  const [values, loading, error] = useCollection(collection(database, "notes"));
+  const data = values?.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 
-  /* useEffect(() => {
-    loadList();
-  }, []); */
-
-  function PressMe() {
-   try {
-    alert("Hello " + text + "!");
-    setList([...list, { key: list.length, value: text }]); //only saves locally
-    //addDoc(collection(database, "notes"), { text: text });
-    setText("");
+  const submitButton = async () => {
+    try {
+      alert("You have submitted: " + text);
+      await addDoc(collection(database, "notes"), {
+        text: text
+      });
+      setText("");
     } catch (e) {
       console.error("Error adding document: ", e);
     }
-    
-  }
+  };
 
-  async function saveList() {
+  const loadNotes = async () => {
     try {
-      await AsyncStorage.setItem("@list:key", JSON.stringify(list));
-      alert("List saved successfully!");
-    } catch (error) {
-      console.error("Error saving list:", error);
-      alert("Failed to save list.");
-    }
-  }
-
-  async function loadList() {
-    try {
-      const savedList = await AsyncStorage.getItem("@list:key");
-      if (savedList !== null) {
-        setList(JSON.parse(savedList));
-        alert("List loaded successfully!");
-      } else {
-        alert("No list found.");
+      const savedNotes = await AsyncStorage.getItem('notes');
+      if (savedNotes !== null) {
+        setNotes(JSON.parse(savedNotes));
       }
     } catch (error) {
-      console.error("Error loading list:", error);
-      alert("Failed to load list.");
+      console.error('Error loading notes:', error);
     }
-  }
-  /*   useEffect(() => { 
-    const unsubscribe = navigation.addListener('focus', () => {
-      updateList(route.params?.key, route.params?.value)
-     })
-    return unsubscribe;
-  }, [navigation, route]); // kør useEffect når navigation eller route ændres
+  };
 
-  function updateList(){
-    const newList = notes.map(note =>{
-      if (note.key === key) {
-        return {key: key, value: text};
-      } else {
-        return note;
-      }
-    
-    })
-    setList(newList);
-  }; */
+  const saveNotes = async () => {
+    try {
+      await AsyncStorage.setItem('notes', JSON.stringify(notes));
+      alert('Notes saved successfully!');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
+  };
+
+  const handleEditNote = async (editedText, noteId) => {
+    try {
+      const noteRef = doc(database, "notes", noteId);
+      await updateDoc(noteRef, { text: editedText });
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    try {
+      const noteRef = doc(database, "notes", id);
+      await deleteDoc(noteRef);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
+      <Stack.Navigator initialRouteName='Home'>
         <Stack.Screen name="Home">
-          {(props) => ( //props is the navigation prop which is passed to the Home component
+          {(props) => (
             <Home
               {...props}
-              text={text}
+              submitButton={submitButton}
+              loadNotes={loadNotes}
+              saveNotes={saveNotes}
+              notes={notes}
               setText={setText}
-              list={list}
-              setList={setList}
-              PressMe={PressMe}
-              loadList={loadList}
-              saveList={saveList}
-              //data={data} //changed from list to data because of firebase
+              text={text}
+              setNotes={setNotes}
+              data={data}
+              handleDeleteNote={handleDeleteNote}
+              handleEditNote={handleEditNote}
             />
           )}
         </Stack.Screen>
+
         <Stack.Screen name="DetailPage">
           {(props) => (
             <DetailPage
               {...props}
-              list={list}
-              setList={setList}
-              saveList={saveList}
-            
+              onSave={(editedText) => handleEditNote(editedText, props.route.params.note.id)}
             />
           )}
         </Stack.Screen>
@@ -117,81 +100,76 @@ export default function App() {
   );
 }
 
-const Home = ({
-  navigation,
-  route,
-  text,
-  setText,
-  list,
-  setList,
-  PressMe,
-  loadList,
-  saveList,
-  data,
-}) => {
-  function goToDetailPage(text) {
-    navigation.navigate("DetailPage", { message: text });
-  }
+const Home = ({ navigation, route, submitButton, loadNotes, saveNotes, notes, setText, text, setNotes, data, handleDeleteNote }) => {
+  const handleItemPress = (item) => {
+    navigation.navigate('DetailPage', { note: item });
+  };
+
   const truncateNote = (note) => {
     return note.length > 30 ? note.substring(0, 30) + "..." : note;
   };
 
+  const renderItem = ({ item }) => (
+    <TouchableOpacity onPress={() => handleItemPress(item)}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={styles.note}>{truncateNote(item.text)}</Text>
+        <Button title="Delete" onPress={() => handleDeleteNote(item.id)} />
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>React native week 2 + 3 + 4</Text>
-      <TextInput
-        style={styles.textinput}
-        placeholder="Skriv noget"
-        onChangeText={(txt) => setText(txt)}
-        value={text}
-      />
-      <Button title="Submit" onPress={PressMe} color="black" />
+      <Text style={styles.title}>Notebook</Text>
+      <Button title='Detail Page' onPress={() => navigation.navigate('DetailPage')} />
+      <TextInput style={styles.input} placeholder='Type Something' onChangeText={setText} value={text} />
+      <Button title='Submit' onPress={submitButton} color="#841584" />
       <FlatList
-        data={list} //changed from list to data because of firebase
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => goToDetailPage(item.value)}>
-            <Text>{truncateNote(item.value)}</Text>
-          </TouchableOpacity>
-        )}
+        data={data}
+        renderItem={renderItem}
       />
-      <Button title="DetailPage" onPress={goToDetailPage} />
       <View style={styles.buttonContainer}>
-        <Button title="Clear List" onPress={() => setList([])} color="red" />
-        <Button title="Save List" onPress={saveList} color="green" />
-        <Button title="Load List" onPress={loadList} />
+        <Button title='Save Notes' onPress={saveNotes} style={styles.button} />
+        <Button title='Load Notes' onPress={loadNotes} style={styles.button} />
+        <Button title='Clear Notes' onPress={() => setNotes([])} style={styles.button} />
       </View>
-      <StatusBar style="auto" />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
   },
   title: {
-    marginTop: 20,
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 20,
   },
-  textinput: {
+  input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: '#ccc',
     borderRadius: 4,
     padding: 10,
     marginBottom: 10,
-    width: "100%",
+    width: '100%',
+    marginTop: 10
+  },
+  note: {
+    fontSize: 16,
+    marginBottom: 10,
   },
   buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 20,
-    marginBottom: 20,
-    width: "100%",
+    width: '100%',
   },
+  button: {
+    marginBottom: 10,
+  }
 });
