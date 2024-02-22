@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
 import {useState} from 'react';
 
-const DetailPage = ({ navigation, route, saveList, setList, list = [], data}) => {
-    const [editedMessage, setEditedMessage] = useState(route.params?.message);
+const DetailPage = ({ navigation, route, onSave}) => {
+    const [editedMessage, setEditedMessage] = useState(route.params?.note);
 
  /*  const message = route.params?.message ?? 'No message';
   const [text, setText] = useState(message);
@@ -13,14 +13,7 @@ const DetailPage = ({ navigation, route, saveList, setList, list = [], data}) =>
   } */
     
 
-
-  function onSavePressed(){
-    navigation.navigate('Home', {key: route.params.item.id, value: editedMessage});
-  }
-
-
-
-  const handleSaveNote = () => {
+ /*  const handleSaveNote = () => {
     const updatedList = (list).map(note => {
         if (note.value === route.params?.message) {
           return { ...note, value: editedMessage };
@@ -31,7 +24,12 @@ const DetailPage = ({ navigation, route, saveList, setList, list = [], data}) =>
       saveList();
       navigation.goBack();
       //navigation.navigate('Home', {key: route.params.item.id, value: editedMessage})
-    };
+    }; */
+
+    const handleSaveNote = () => {
+      onSave(editedMessage);
+      navigation.goBack();
+    }
 
   return (
     <View style={styles.container}>

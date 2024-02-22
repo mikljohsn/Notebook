@@ -1,20 +1,13 @@
 import { StatusBar } from "expo-status-bar";
 import { useState, useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  TextInput,
-  FlatList,
-} from "react-native";
+import { StyleSheet, Text, View, Button, TextInput, FlatList, } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
 import { TouchableOpacity } from "react-native";
 import DetailPage from "./DetailPage.js";
 import {app, database} from './firebase.js';
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useCollection} from 'react-firebase-hooks/firestore';
 
 export default function App() {
@@ -31,8 +24,9 @@ export default function App() {
   function PressMe() {
    try {
     alert("Hello " + text + "!");
-    setList([...list, { key: list.length, value: text }]); //only saves locally
-    //addDoc(collection(database, "notes"), { text: text });
+    //setList([...list, { key: list.length, value: text }]); //only saves locally
+    addDoc(collection(database, "notes"), {
+       text: text });
     setText("");
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -83,6 +77,33 @@ export default function App() {
     setList(newList);
   }; */
 
+/*   async function deleteById(id){
+    await deleteDoc(doc(database, "notes", id));
+  }
+  async function updateById(id, txt){
+    await updateDoc(doc(database, "notes", id), {
+      text: txt
+    });
+  } */
+
+  const handleEditNote = async (editedText, noteId) => {
+    try {
+      const noteRef = doc(database, "notes", noteId);
+      await updateDoc(noteRef, { text: editedText });
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    try {
+      const noteRef = doc(database, "notes", id);
+      await deleteDoc(noteRef);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Home">
@@ -97,7 +118,9 @@ export default function App() {
               PressMe={PressMe}
               loadList={loadList}
               saveList={saveList}
-              //data={data} //changed from list to data because of firebase
+              data={data} //changed from list to data because of firebase
+              handleDeleteNote={handleDeleteNote}
+              handleEditNote={handleEditNote}
             />
           )}
         </Stack.Screen>
@@ -105,10 +128,7 @@ export default function App() {
           {(props) => (
             <DetailPage
               {...props}
-              list={list}
-              setList={setList}
-              saveList={saveList}
-            
+              onSave ={(editedText) => handleEditNote(editedText, props.route.params.note.id)} //changed from list to data because of firebase
             />
           )}
         </Stack.Screen>
@@ -128,13 +148,19 @@ const Home = ({
   loadList,
   saveList,
   data,
+  deleteById,
+  updateById,
+  handleDeleteNote,
+  handleEditNote,
 }) => {
-  function goToDetailPage(text) {
-    navigation.navigate("DetailPage", { message: text });
+  function goToDetailPage(item) {
+    navigation.navigate("DetailPage", { note: item });
   }
   const truncateNote = (note) => {
     return note.length > 30 ? note.substring(0, 30) + "..." : note;
   };
+
+ 
 
   return (
     <View style={styles.container}>
@@ -147,10 +173,13 @@ const Home = ({
       />
       <Button title="Submit" onPress={PressMe} color="black" />
       <FlatList
-        data={list} //changed from list to data because of firebase
+        data={data} //changed from list to data because of firebase
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => goToDetailPage(item.value)}>
-            <Text>{truncateNote(item.value)}</Text>
+          <TouchableOpacity onPress={() => goToDetailPage(item.text)}>
+            <View>
+            <Text>{truncateNote(item.text)}</Text>
+            <Button title="Delete" onPress={() => handleDeleteNote(item.id)} />
+            </View>
           </TouchableOpacity>
         )}
       />
