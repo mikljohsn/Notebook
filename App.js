@@ -7,6 +7,9 @@ import DetailPage from './DetailPage';
 import { app, database } from './firebase.js';
 import { collection, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useCollection } from "react-firebase-hooks/firestore";
+import * as ImagePicker from 'expo-image-picker';
+import { storage } from './firebase';
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 const Stack = createNativeStackNavigator();
 
@@ -121,7 +124,6 @@ const Home = ({ navigation, route, submitButton, loadNotes, saveNotes, notes, se
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Notebook</Text>
-      <Button title='Detail Page' onPress={() => navigation.navigate('DetailPage')} />
       <TextInput style={styles.input} placeholder='Type Something' onChangeText={setText} value={text} />
       <Button title='Submit' onPress={submitButton} color="#841584" />
       <FlatList
